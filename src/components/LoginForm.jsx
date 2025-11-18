@@ -13,9 +13,22 @@ const LoginForm = () => {
 
   // Variables de entorno
   const showPlaceholders = import.meta.env.VITE_SHOW_PLACEHOLDERS === 'true';
-  const baseUrl = import.meta.env.VITE_SERVER_URL 
-    ? import.meta.env.VITE_SERVER_URL.replace('/login', '')
-    : 'http://localhost:3000';
+  
+  // Obtener URL base y asegurar que use HTTPS en producción
+  const getBaseUrl = () => {
+    if (import.meta.env.VITE_SERVER_URL) {
+      let url = import.meta.env.VITE_SERVER_URL.replace('/login', '').replace('/register', '');
+      // Si la URL empieza con http:// y estamos en producción, cambiarla a https://
+      if (url.startsWith('http://') && window.location.protocol === 'https:') {
+        url = url.replace('http://', 'https://');
+      }
+      return url;
+    }
+    // En desarrollo local, usar http
+    return window.location.protocol === 'https:' ? 'https://localhost:3000' : 'http://localhost:3000';
+  };
+  
+  const baseUrl = getBaseUrl();
   const loginUrl = `${baseUrl}/login`;
   const registerUrl = `${baseUrl}/register`;
 
@@ -128,6 +141,7 @@ const LoginForm = () => {
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder={showPlaceholders ? "Tu nombre" : ""}
+                  autoComplete="name"
                 />
               </div>
             </div>
@@ -153,6 +167,7 @@ const LoginForm = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={showPlaceholders ? "correo@ejemplo.com" : ""}
+                autoComplete={isLogin ? "email" : "email"}
                 required
               />
             </div>
@@ -178,6 +193,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={showPlaceholders ? "••••••••" : ""}
+                autoComplete={isLogin ? "current-password" : "new-password"}
                 required
               />
               <button
