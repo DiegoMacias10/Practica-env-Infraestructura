@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 .env
+.env.local
+!.env.example
+
+# Backend (carpeta del proyecto backend)
+../Practica-env-Infraestructura-backend/
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +28,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+VARIABLES_ENTORNO.txt
+Captura de pantalla 2025-11-17 234005.png
