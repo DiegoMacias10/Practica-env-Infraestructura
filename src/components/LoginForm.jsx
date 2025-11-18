@@ -2,17 +2,86 @@ import { useState } from 'react';
 import './LoginForm.css';
 
 const LoginForm = () => {
+  const [isLogin, setIsLogin] = useState(true); // true = login, false = registro
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [nombre, setNombre] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  // Variable de entorno para controlar los placeholders
+  // Variables de entorno
   const showPlaceholders = import.meta.env.VITE_SHOW_PLACEHOLDERS === 'true';
+  const baseUrl = import.meta.env.VITE_SERVER_URL 
+    ? import.meta.env.VITE_SERVER_URL.replace('/login', '')
+    : 'http://localhost:3000';
+  const loginUrl = `${baseUrl}/login`;
+  const registerUrl = `${baseUrl}/register`;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password });
-    // Aquí iría la lógica de autenticación
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    const url = isLogin ? loginUrl : registerUrl;
+    const body = isLogin 
+      ? { email, password }
+      : { email, password, nombre: nombre || undefined };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const successMessage = isLogin 
+          ? (data.message || '¡Inicio de sesión exitoso!')
+          : (data.message || '¡Registro exitoso! Ya puedes iniciar sesión.');
+        setSuccess(successMessage);
+        console.log(isLogin ? 'Usuario autenticado:' : 'Usuario registrado:', data.user);
+        
+        // Si es registro exitoso, cambiar a modo login
+        if (!isLogin) {
+          setTimeout(() => {
+            setIsLogin(true);
+            setNombre('');
+            setPassword('');
+            setSuccess('');
+          }, 2000);
+        }
+      } else {
+        // FastAPI devuelve errores con 'detail' en lugar de 'message'
+        const errorMessage = data.detail || data.message || 
+          (isLogin ? 'Error al iniciar sesión. Por favor, intenta de nuevo.' : 'Error al registrarse. Por favor, intenta de nuevo.');
+        setError(errorMessage);
+      }
+    } catch (err) {
+      // Manejo de errores de red o JSON inválido
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo y la URL sea correcta.');
+      } else {
+        setError('Error inesperado. Por favor, intenta de nuevo.');
+      }
+      console.error(`Error en ${isLogin ? 'login' : 'registro'}:`, err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    setError('');
+    setSuccess('');
+    setPassword('');
+    setNombre('');
   };
 
   return (
@@ -33,11 +102,37 @@ const LoginForm = () => {
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </div>
-          <h1>Bienvenido</h1>
-          <p>Inicia sesión en tu cuenta</p>
+          <h1>{isLogin ? 'Bienvenido' : 'Crear Cuenta'}</h1>
+          <p>{isLogin ? 'Inicia sesión en tu cuenta' : 'Regístrate para comenzar'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="nombre">Nombre (Opcional)</label>
+              <div className="input-wrapper">
+                <svg 
+                  className="input-icon" 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <input
+                  type="text"
+                  id="nombre"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder={showPlaceholders ? "Tu nombre" : ""}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="email">Correo Electrónico</label>
             <div className="input-wrapper">
@@ -106,9 +201,47 @@ const LoginForm = () => {
             </div>
           </div>
 
-          <button type="submit" className="submit-btn">
-            Iniciar Sesión
+          {error && (
+            <div className="message error-message">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="message success-message">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>{success}</span>
+            </div>
+          )}
+
+          <button type="submit" className="submit-btn" disabled={loading}>
+            {loading 
+              ? (isLogin ? 'Iniciando sesión...' : 'Registrando...')
+              : (isLogin ? 'Iniciar Sesión' : 'Registrarse')
+            }
           </button>
+
+          <div className="toggle-mode">
+            <p>
+              {isLogin ? '¿No tienes una cuenta? ' : '¿Ya tienes una cuenta? '}
+              <button 
+                type="button" 
+                className="toggle-link"
+                onClick={toggleMode}
+                disabled={loading}
+              >
+                {isLogin ? 'Regístrate aquí' : 'Inicia sesión aquí'}
+              </button>
+            </p>
+          </div>
         </form>
       </div>
     </div>
