@@ -10,64 +10,14 @@ const LoginForm = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [emailValid, setEmailValid] = useState(null); // null = no validado, true = válido, false = inválido
 
   // Variables de entorno
   const showPlaceholders = import.meta.env.VITE_SHOW_PLACEHOLDERS === 'true';
-  
-  // Función para obtener la URL base con conversión http -> https en producción
-  const getBaseUrl = () => {
-    const serverUrl = import.meta.env.VITE_SERVER_URL;
-    if (!serverUrl) return 'http://localhost:3000';
-    
-    let baseUrl = serverUrl.replace('/login', '');
-    
-    // Si estamos en producción (HTTPS) y la URL es HTTP, convertir a HTTPS
-    if (window.location.protocol === 'https:' && baseUrl.startsWith('http://')) {
-      baseUrl = baseUrl.replace('http://', 'https://');
-    }
-    
-    return baseUrl;
-  };
-  
-  const baseUrl = getBaseUrl();
+  const baseUrl = import.meta.env.VITE_SERVER_URL 
+    ? import.meta.env.VITE_SERVER_URL.replace('/login', '')
+    : 'http://localhost:3000';
   const loginUrl = `${baseUrl}/login`;
   const registerUrl = `${baseUrl}/register`;
-
-  // Validar email en tiempo real
-  const validateEmail = (emailValue) => {
-    if (!emailValue) {
-      setEmailValid(null);
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    setEmailValid(emailRegex.test(emailValue));
-  };
-
-  // Calcular fortaleza de contraseña
-  const getPasswordStrength = (pwd) => {
-    if (!pwd) return { strength: 0, label: '', color: '' };
-    let strength = 0;
-    if (pwd.length >= 6) strength++;
-    if (pwd.length >= 8) strength++;
-    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) strength++;
-    if (/\d/.test(pwd)) strength++;
-    if (/[^a-zA-Z\d]/.test(pwd)) strength++;
-    
-    const levels = [
-      { label: 'Muy débil', color: '#ef4444', strength: 0 },
-      { label: 'Débil', color: '#f97316', strength: 1 },
-      { label: 'Regular', color: '#eab308', strength: 2 },
-      { label: 'Buena', color: '#22c55e', strength: 3 },
-      { label: 'Fuerte', color: '#10b981', strength: 4 },
-      { label: 'Muy fuerte', color: '#059669', strength: 5 }
-    ];
-    
-    const levelIndex = Math.min(strength, 5);
-    return { ...levels[levelIndex], strength: levelIndex };
-  };
-
-  const passwordStrength = !isLogin ? getPasswordStrength(password) : { strength: 0, label: '', color: '' };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -139,12 +89,11 @@ const LoginForm = ({ onLogin }) => {
     setSuccess('');
     setPassword('');
     setNombre('');
-    setEmailValid(null);
   };
 
   return (
     <div className="login-container">
-      <div className={`login-card ${isLogin ? 'login-mode' : 'register-mode'}`}>
+      <div className="login-card">
         <div className="login-header">
           <div className="logo-circle">
             <svg 
@@ -186,7 +135,6 @@ const LoginForm = ({ onLogin }) => {
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder={showPlaceholders ? "Tu nombre" : ""}
-                  autoComplete="name"
                 />
               </div>
             </div>
@@ -210,32 +158,10 @@ const LoginForm = ({ onLogin }) => {
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  validateEmail(e.target.value);
-                }}
-                onBlur={() => validateEmail(email)}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder={showPlaceholders ? "correo@ejemplo.com" : ""}
-                autoComplete={isLogin ? "email" : "email"}
-                className={emailValid === false ? 'input-invalid' : emailValid === true ? 'input-valid' : ''}
                 required
               />
-              {emailValid !== null && (
-                <div className="input-validation-icon">
-                  {emailValid ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
@@ -259,7 +185,6 @@ const LoginForm = ({ onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={showPlaceholders ? "••••••••" : ""}
-                autoComplete={isLogin ? "current-password" : "new-password"}
                 required
               />
               <button
@@ -281,22 +206,6 @@ const LoginForm = ({ onLogin }) => {
                 )}
               </button>
             </div>
-            {!isLogin && password && (
-              <div className="password-strength">
-                <div className="password-strength-bar">
-                  <div 
-                    className="password-strength-fill"
-                    style={{
-                      width: `${(passwordStrength.strength / 5) * 100}%`,
-                      backgroundColor: passwordStrength.color
-                    }}
-                  ></div>
-                </div>
-                <span className="password-strength-label" style={{ color: passwordStrength.color }}>
-                  {passwordStrength.label}
-                </span>
-              </div>
-            )}
           </div>
 
           {error && (
@@ -320,7 +229,7 @@ const LoginForm = ({ onLogin }) => {
             </div>
           )}
 
-          <button type="submit" className="submit-btn" disabled={loading || (emailValid === false)}>
+          <button type="submit" className="submit-btn" disabled={loading}>
             {loading 
               ? (isLogin ? 'Iniciando sesión...' : 'Registrando...')
               : (isLogin ? 'Iniciar Sesión' : 'Registrarse')
