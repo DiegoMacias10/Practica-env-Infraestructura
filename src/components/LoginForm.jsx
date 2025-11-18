@@ -2,8 +2,10 @@ import { useState } from 'react';
 import './LoginForm.css';
 
 const LoginForm = () => {
+  const [isLogin, setIsLogin] = useState(true); // true = login, false = registro
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [nombre, setNombre] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -11,7 +13,11 @@ const LoginForm = () => {
 
   // Variables de entorno
   const showPlaceholders = import.meta.env.VITE_SHOW_PLACEHOLDERS === 'true';
-  const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000/login';
+  const baseUrl = import.meta.env.VITE_SERVER_URL 
+    ? import.meta.env.VITE_SERVER_URL.replace('/login', '')
+    : 'http://localhost:3000';
+  const loginUrl = `${baseUrl}/login`;
+  const registerUrl = `${baseUrl}/register`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,30 +25,63 @@ const LoginForm = () => {
     setSuccess('');
     setLoading(true);
 
+    const url = isLogin ? loginUrl : registerUrl;
+    const body = isLogin 
+      ? { email, password }
+      : { email, password, nombre: nombre || undefined };
+
     try {
-      const response = await fetch(serverUrl, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setSuccess(data.message || '¡Inicio de sesión exitoso!');
-        // Aquí podrías redirigir o guardar el token
-        console.log('Usuario autenticado:', data.user);
+        const successMessage = isLogin 
+          ? (data.message || '¡Inicio de sesión exitoso!')
+          : (data.message || '¡Registro exitoso! Ya puedes iniciar sesión.');
+        setSuccess(successMessage);
+        console.log(isLogin ? 'Usuario autenticado:' : 'Usuario registrado:', data.user);
+        
+        // Si es registro exitoso, cambiar a modo login
+        if (!isLogin) {
+          setTimeout(() => {
+            setIsLogin(true);
+            setNombre('');
+            setPassword('');
+            setSuccess('');
+          }, 2000);
+        }
       } else {
-        setError(data.message || 'Error al iniciar sesión. Por favor, intenta de nuevo.');
+        // FastAPI devuelve errores con 'detail' en lugar de 'message'
+        const errorMessage = data.detail || data.message || 
+          (isLogin ? 'Error al iniciar sesión. Por favor, intenta de nuevo.' : 'Error al registrarse. Por favor, intenta de nuevo.');
+        setError(errorMessage);
       }
     } catch (err) {
-      setError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo.');
-      console.error('Error en login:', err);
+      // Manejo de errores de red o JSON inválido
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo y la URL sea correcta.');
+      } else {
+        setError('Error inesperado. Por favor, intenta de nuevo.');
+      }
+      console.error(`Error en ${isLogin ? 'login' : 'registro'}:`, err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    setError('');
+    setSuccess('');
+    setPassword('');
+    setNombre('');
   };
 
   return (
@@ -63,11 +102,37 @@ const LoginForm = () => {
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </div>
-          <h1>Bienvenido</h1>
-          <p>Inicia sesión en tu cuenta</p>
+          <h1>{isLogin ? 'Bienvenido' : 'Crear Cuenta'}</h1>
+          <p>{isLogin ? 'Inicia sesión en tu cuenta' : 'Regístrate para comenzar'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="nombre">Nombre (Opcional)</label>
+              <div className="input-wrapper">
+                <svg 
+                  className="input-icon" 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <input
+                  type="text"
+                  id="nombre"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder={showPlaceholders ? "Tu nombre" : ""}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="email">Correo Electrónico</label>
             <div className="input-wrapper">
@@ -158,8 +223,25 @@ const LoginForm = () => {
           )}
 
           <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            {loading 
+              ? (isLogin ? 'Iniciando sesión...' : 'Registrando...')
+              : (isLogin ? 'Iniciar Sesión' : 'Registrarse')
+            }
           </button>
+
+          <div className="toggle-mode">
+            <p>
+              {isLogin ? '¿No tienes una cuenta? ' : '¿Ya tienes una cuenta? '}
+              <button 
+                type="button" 
+                className="toggle-link"
+                onClick={toggleMode}
+                disabled={loading}
+              >
+                {isLogin ? 'Regístrate aquí' : 'Inicia sesión aquí'}
+              </button>
+            </p>
+          </div>
         </form>
       </div>
     </div>

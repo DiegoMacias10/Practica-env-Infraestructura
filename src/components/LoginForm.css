@@ -306,6 +306,40 @@
   }
 }
 
+.toggle-mode {
+  margin-top: 20px;
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toggle-mode p {
+  color: #9ca3af;
+  font-size: 14px;
+  margin: 0;
+}
+
+.toggle-link {
+  background: none;
+  border: none;
+  color: #8b5cf6;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.toggle-link:hover {
+  color: #3b82f6;
+}
+
+.toggle-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .login-card {
