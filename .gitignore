@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 .env
+.env.local
+!.env.example
+
+# Backend (carpeta del proyecto backend)
+../Practica-env-Infraestructura-backend/
 
 # Editor directories and files
 .vscode/*

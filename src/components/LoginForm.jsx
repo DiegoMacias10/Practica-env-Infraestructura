@@ -5,14 +5,44 @@ const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  // Variable de entorno para controlar los placeholders
+  // Variables de entorno
   const showPlaceholders = import.meta.env.VITE_SHOW_PLACEHOLDERS === 'true';
+  const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000/login';
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password });
-    // Aquí iría la lógica de autenticación
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(serverUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setSuccess(data.message || '¡Inicio de sesión exitoso!');
+        // Aquí podrías redirigir o guardar el token
+        console.log('Usuario autenticado:', data.user);
+      } else {
+        setError(data.message || 'Error al iniciar sesión. Por favor, intenta de nuevo.');
+      }
+    } catch (err) {
+      setError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo.');
+      console.error('Error en login:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -106,8 +136,29 @@ const LoginForm = () => {
             </div>
           </div>
 
-          <button type="submit" className="submit-btn">
-            Iniciar Sesión
+          {error && (
+            <div className="message error-message">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="message success-message">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>{success}</span>
+            </div>
+          )}
+
+          <button type="submit" className="submit-btn" disabled={loading}>
+            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </button>
         </form>
       </div>
