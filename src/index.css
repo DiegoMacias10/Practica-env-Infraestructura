@@ -19,8 +19,17 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
 }
 
 #root {
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button, a {
+  -webkit-user-select: none;
+  user-select: none;
 }
