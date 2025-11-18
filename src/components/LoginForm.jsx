@@ -10,12 +10,26 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [emailValid, setEmailValid] = useState(null); // null = no validado, true = válido, false = inválido
 
   // Variables de entorno
   const showPlaceholders = import.meta.env.VITE_SHOW_PLACEHOLDERS === 'true';
-  const baseUrl = import.meta.env.VITE_SERVER_URL 
-    ? import.meta.env.VITE_SERVER_URL.replace('/login', '')
-    : 'http://localhost:3000';
+  
+  // Obtener URL base y asegurar que use HTTPS en producción
+  const getBaseUrl = () => {
+    if (import.meta.env.VITE_SERVER_URL) {
+      let url = import.meta.env.VITE_SERVER_URL.replace('/login', '').replace('/register', '');
+      // Si la URL empieza con http:// y estamos en producción, cambiarla a https://
+      if (url.startsWith('http://') && window.location.protocol === 'https:') {
+        url = url.replace('http://', 'https://');
+      }
+      return url;
+    }
+    // En desarrollo local, usar http
+    return window.location.protocol === 'https:' ? 'https://localhost:3000' : 'http://localhost:3000';
+  };
+  
+  const baseUrl = getBaseUrl();
   const loginUrl = `${baseUrl}/login`;
   const registerUrl = `${baseUrl}/register`;
 
@@ -82,11 +96,47 @@ const LoginForm = () => {
     setSuccess('');
     setPassword('');
     setNombre('');
+    setEmailValid(null);
   };
+
+  // Validar email en tiempo real
+  const validateEmail = (emailValue) => {
+    if (!emailValue) {
+      setEmailValid(null);
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    setEmailValid(emailRegex.test(emailValue));
+  };
+
+  // Calcular fortaleza de contraseña (solo para registro)
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { strength: 0, label: '', color: '' };
+    let strength = 0;
+    if (pwd.length >= 6) strength++;
+    if (pwd.length >= 8) strength++;
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) strength++;
+    if (/\d/.test(pwd)) strength++;
+    if (/[^a-zA-Z\d]/.test(pwd)) strength++;
+    
+    const levels = [
+      { label: 'Muy débil', color: '#ef4444', strength: 0 },
+      { label: 'Débil', color: '#f97316', strength: 1 },
+      { label: 'Regular', color: '#eab308', strength: 2 },
+      { label: 'Buena', color: '#22c55e', strength: 3 },
+      { label: 'Fuerte', color: '#10b981', strength: 4 },
+      { label: 'Muy fuerte', color: '#059669', strength: 5 }
+    ];
+    
+    const levelIndex = Math.min(strength, 5);
+    return { ...levels[levelIndex], strength: levelIndex };
+  };
+
+  const passwordStrength = !isLogin ? getPasswordStrength(password) : null;
 
   return (
     <div className="login-container">
-      <div className="login-card">
+      <div className={`login-card ${isLogin ? 'login-mode' : 'register-mode'}`}>
         <div className="login-header">
           <div className="logo-circle">
             <svg 
@@ -128,6 +178,7 @@ const LoginForm = () => {
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder={showPlaceholders ? "Tu nombre" : ""}
+                  autoComplete="name"
                 />
               </div>
             </div>
@@ -151,10 +202,32 @@ const LoginForm = () => {
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  validateEmail(e.target.value);
+                }}
+                onBlur={() => validateEmail(email)}
                 placeholder={showPlaceholders ? "correo@ejemplo.com" : ""}
+                autoComplete={isLogin ? "email" : "email"}
+                className={emailValid === false ? 'input-invalid' : emailValid === true ? 'input-valid' : ''}
                 required
               />
+              {emailValid === false && email && (
+                <span className="input-validation-icon error-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </span>
+              )}
+              {emailValid === true && email && (
+                <span className="input-validation-icon valid-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+              )}
             </div>
           </div>
 
@@ -178,8 +251,25 @@ const LoginForm = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={showPlaceholders ? "••••••••" : ""}
+                autoComplete={isLogin ? "current-password" : "new-password"}
                 required
               />
+              {!isLogin && password && (
+                <div className="password-strength">
+                  <div className="password-strength-bar">
+                    <div 
+                      className="password-strength-fill"
+                      style={{
+                        width: `${(passwordStrength.strength / 5) * 100}%`,
+                        backgroundColor: passwordStrength.color
+                      }}
+                    ></div>
+                  </div>
+                  <span className="password-strength-label" style={{ color: passwordStrength.color }}>
+                    {passwordStrength.label}
+                  </span>
+                </div>
+              )}
               <button
                 type="button"
                 className="toggle-password"
@@ -222,11 +312,15 @@ const LoginForm = () => {
             </div>
           )}
 
-          <button type="submit" className="submit-btn" disabled={loading}>
-            {loading 
-              ? (isLogin ? 'Iniciando sesión...' : 'Registrando...')
-              : (isLogin ? 'Iniciar Sesión' : 'Registrarse')
-            }
+          <button type="submit" className="submit-btn" disabled={loading || (emailValid === false)}>
+            {loading ? (
+              <span className="btn-loading">
+                <span className="spinner"></span>
+                {isLogin ? 'Iniciando sesión...' : 'Registrando...'}
+              </span>
+            ) : (
+              isLogin ? 'Iniciar Sesión' : 'Registrarse'
+            )}
           </button>
 
           <div className="toggle-mode">
